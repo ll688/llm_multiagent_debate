@@ -3,7 +3,12 @@ import pandas as pd
 import json
 import time
 import random
-import openai
+from openai import OpenAI
+import os
+
+client = OpenAI(
+  api_key=os.environ['OPENAI_API_KEY'],  # this is also the default, it can be omitted
+)
 
 def construct_message(agents, question, idx):
     if len(agents) == 0:
@@ -22,16 +27,16 @@ def construct_message(agents, question, idx):
 
 
 def construct_assistant_message(completion):
-    content = completion["choices"][0]["message"]["content"]
+    content = completion.choices[0].message.content
     return {"role": "assistant", "content": content}
 
 
 def generate_answer(answer_context):
     try:
-        completion = openai.ChatCompletion.create(
-                  model="gpt-3.5-turbo-0301",
-                  messages=answer_context,
-                  n=1)
+        completion = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=answer_context
+                    )
     except:
         print("retrying due to an error......")
         time.sleep(20)
@@ -57,7 +62,7 @@ if __name__ == "__main__":
     agents = 3
     rounds = 2
 
-    tasks = glob("/data/vision/billf/scratch/yilundu/llm_iterative_debate/mmlu/data/test/*.csv")
+    tasks = glob("/data/mmlu/data/test/*.csv")
 
     dfs = [pd.read_csv(task) for task in tasks]
 
@@ -86,6 +91,7 @@ if __name__ == "__main__":
                 assistant_message = construct_assistant_message(completion)
                 agent_context.append(assistant_message)
                 print(completion)
+                time.sleep(20)
 
         response_dict[question] = (agent_contexts, answer)
 

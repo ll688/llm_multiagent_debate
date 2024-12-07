@@ -1,5 +1,9 @@
-import openai
-import json
+from openai import OpenAI
+import os
+
+client = OpenAI(
+  api_key=os.environ['OPENAI_API_KEY'],  # this is also the default, it can be omitted
+)
 import numpy as np
 import time
 import pickle
@@ -25,13 +29,13 @@ def parse_bullets(sentence):
 
 def generate_answer(answer_context):
     try:
-        completion = openai.ChatCompletion.create(
-                  model="gpt-3.5-turbo-0301",
-                  messages=answer_context,
-                  n=1)
-    except:
-        print("retrying due to an error......")
-        time.sleep(20)
+        completion = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=answer_context
+                    )
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        time.sleep(21)
         return generate_answer(answer_context)
 
     return completion
@@ -56,7 +60,7 @@ def construct_message(agents, question, idx):
 
 
 def construct_assistant_message(completion):
-    content = completion["choices"][0]["message"]["content"]
+    content = completion.choices[0].message.content
     return {"role": "assistant", "content": content}
 
 def parse_answer(sentence):
@@ -119,6 +123,7 @@ if __name__ == "__main__":
                 assistant_message = construct_assistant_message(completion)
                 agent_context.append(assistant_message)
                 print(completion)
+                time.sleep(20)
 
         text_answers = []
 
