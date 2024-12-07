@@ -1,5 +1,10 @@
 import json
-import openai
+from openai import OpenAI
+import os
+
+client = OpenAI(
+  api_key=os.environ['OPENAI_API_KEY'],  # this is also the default, it can be omitted
+)
 import numpy as np
 import time
 
@@ -48,6 +53,20 @@ def filter_people(person):
     people = person.split("(")[0]
     return people
 
+def generate_answer(answer_context):
+    try:
+        completion = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=answer_context
+                    )
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        time.sleep(21)
+        return generate_answer(answer_context)
+
+    return completion
+
+
 if __name__ == "__main__":
     response = json.load(open("biography_1_2.json", "r"))
 
@@ -89,20 +108,11 @@ if __name__ == "__main__":
 
             for bullet in gt_bullets:
                 message = [{"role": "user", "content": "Consider the following biography of {}: \n {} \n\n Is the above biography above consistent with the fact below? \n\n {} \n Give a single word answer, yes, no, or uncertain. Carefully check the precise dates and locations between the fact and the above biography.".format(person, bio_bullets, bullet)}]
-
-                try:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=message,
-                              n=1)
-                except Exception as e:
-                    print("sleeping")
-                    time.sleep(20)
-                    continue
-
                 print(message)
 
-                content = completion["choices"][0]["message"]["content"]
+                completion = generate_answer(message)
+
+                content = completion.choices[0].message.content
                 print(content)
                 accurate = parse_yes_no(content)
 

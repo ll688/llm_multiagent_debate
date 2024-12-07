@@ -1,5 +1,11 @@
 import json
-import openai
+from openai import OpenAI
+import os
+
+client = OpenAI(
+  api_key=os.environ['OPENAI_API_KEY'],  # this is also the default, it can be omitted
+)
+import time
 import random
 from tqdm import tqdm
 
@@ -25,6 +31,18 @@ def filter_people(person):
     people = person.split("(")[0]
     return people
 
+def generate_answer(answer_context):
+    try:
+        completion = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=answer_context
+                    )
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        time.sleep(21)
+        return generate_answer(answer_context)
+
+    return completion
 
 def construct_message(agents, idx, person, final=False):
     prefix_string = "Here are some bullet point biographies of {} given by other agents: ".format(person)
@@ -48,7 +66,7 @@ def construct_message(agents, idx, person, final=False):
 
 
 def construct_assistant_message(completion):
-    content = completion["choices"][0]["message"]["content"]
+    content = completion.choices[0].message.content
     return {"role": "assistant", "content": content}
 
 
@@ -81,21 +99,14 @@ if __name__ == "__main__":
                     else:
                         message = construct_message(agent_contexts_other, 2*round - 1, person=person, final=False)
                     agent_context.append(message)
+                    print("message: ", message)
 
-                try:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=agent_context,
-                              n=1)
-                except:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=agent_context,
-                              n=1)
+                completion = generate_answer(agent_context)
 
                 print(completion)
                 assistant_message = construct_assistant_message(completion)
                 agent_context.append(assistant_message)
+                time.sleep(20)
 
             bullets = parse_bullets(completion["choices"][0]['message']['content'])
 
